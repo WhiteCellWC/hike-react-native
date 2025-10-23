@@ -5,7 +5,7 @@ const DATABASE_NAME = "hike.db";
 const TABLE_HIKES = "hikes";
 
 // ─── Hike App Service ─────────────────────────────────────
-export class AppConfigService {
+export class HikeAppService {
   private static db: SQLite.SQLiteDatabase | null = null;
 
   /** Ensure DB connection is ready (auto-initialize if needed) */

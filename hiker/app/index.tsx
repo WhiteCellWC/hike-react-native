@@ -1,16 +1,10 @@
+import HikeMain from "@/components/hike/HikeMain";
 import { Text, View } from "react-native";
 
 export default function Index() {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-      className="bg-dark"
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+    <View>
+      <HikeMain />
     </View>
   );
 }
