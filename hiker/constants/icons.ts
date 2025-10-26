@@ -9,6 +9,10 @@ import note from "@/assets/icons/note.png";
 import plus from "@/assets/icons/add_btn.png";
 import plus_thin from "@/assets/icons/plus_thin.png";
 import trash from "@/assets/icons/trash.png";
+import location from "@/assets/icons/location_dot.png";
+import road from "@/assets/icons/road.png";
+import calendar2 from "@/assets/icons/calendar2.png";
+import ellipsis from "@/assets/icons/ellipsis_vertical.png";
 
 export const icons = {
   calendar,
@@ -22,4 +26,8 @@ export const icons = {
   trash,
   menu,
   more,
+  location,
+  road,
+  calendar2,
+  ellipsis,
 } as const;

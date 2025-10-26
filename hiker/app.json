@@ -38,6 +38,41 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/JosefinSans.ttf",
+            "./assets/fonts/JosefinSansBold.ttf"
+          ],
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "JosefinSans",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/font/JosefinSans.ttf",
+                    "weight": 800
+                  }
+                ]
+              }
+            ]
+          },
+          "ios": {
+            "fonts": [
+              {
+                "fontFamily": "JosefinSans",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/font/JosefinSans.ttf",
+                    "weight": 800
+                  }
+                ]
+              }
+            ]
+          }
+        }
       ]
     ],
     "experiments": {

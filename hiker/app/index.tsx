@@ -1,10 +1,10 @@
-import HikeMain from "@/components/hike/HikeMain";
+import HomeMain from "@/components/home/HomeMain";
 import { Text, View } from "react-native";
 
 export default function Index() {
   return (
-    <View>
-      <HikeMain />
+    <View className="flex-1">
+      <HomeMain />
     </View>
   );
 }
