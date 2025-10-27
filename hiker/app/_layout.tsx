@@ -29,7 +29,11 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar hidden={true} />
-      <Stack>
+      <Stack
+        screenOptions={{
+          contentStyle: { backgroundColor: "white" },
+        }}
+      >
         <Stack.Screen options={{ headerShown: false }} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="hikes/add_hike" options={{ headerShown: false }} />

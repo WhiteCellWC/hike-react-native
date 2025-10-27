@@ -4,7 +4,7 @@ import { Image, Text, View } from "react-native";
 
 const HikeCard: React.FC = () => {
   return (
-    <View className=" p-4">
+    <View className=" p-4 ">
       <View
         style={{ height: 200 }}
         className="bg-gray-300 rounded-md justify-center items-center"

@@ -1,11 +1,11 @@
-import AddHike from "@/components/hike/AddHike";
+import AddHikeForm from "@/components/hike/AddHikeForm";
 import React from "react";
 import { View } from "react-native";
 
 const AddHikeScreen = () => {
   return (
-    <View>
-      <AddHike></AddHike>
+    <View className="">
+      <AddHikeForm></AddHikeForm>
     </View>
   );
 };
