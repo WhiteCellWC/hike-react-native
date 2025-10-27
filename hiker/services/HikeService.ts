@@ -1,5 +1,6 @@
 import * as SQLite from "expo-sqlite";
 import { getCurrentEpoch } from "../utils/utils";
+import { Hike } from "@/types/types";
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -18,18 +19,18 @@ const COL_DESCRIPTION = "description";
 const COL_DIFFICULTY = "difficulty";
 const COL_PARKING = "parking";
 
-export type Hike = {
-  id: number;
-  name: string;
-  image: string;
-  location: string;
-  date: number; // epoch
-  length_value: number;
-  length_unit: string; // e.g., "km" or "miles"
-  description: string;
-  difficulty: string; // e.g., "Easy" | "Medium" | "Hard"
-  parking: boolean;
-};
+// export type Hike = {
+//   id: number;
+//   name: string;
+//   image: string;
+//   location: string;
+//   date: number; // epoch
+//   length_value: number;
+//   length_unit: string; // e.g., "km" or "miles"
+//   description: string;
+//   difficulty: string; // e.g., "Easy" | "Medium" | "Hard"
+//   parking: boolean;
+// };
 
 function ensureDbReady() {
   if (!db)

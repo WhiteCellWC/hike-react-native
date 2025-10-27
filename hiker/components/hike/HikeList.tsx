@@ -53,30 +53,35 @@ const HikeList: React.FC = () => {
   ];
 
   return (
-    <View style={{ height: "77%" }} className="">
-      <HikeCard />
-      <ScrollView
-        showsVerticalScrollIndicator={true}
-        contentContainerStyle={{
-          minHeight: "100%",
-          paddingBottom: 10,
+    <View className="border bg-red h-[75%]">
+      <View style={{ flex: 1 }} className="bg-white">
+        {items.length === 0 ? (
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
+            <Text className="text-gray-500">No hike data available.</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            renderItem={({ item }) => <HikeCard hike={item} />}
+          />
+        )}
+      </View>
+
+      <View
+        className="bg-dark_sec px-3 py-5 rounded-2xl"
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 80,
+          justifyContent: "center",
         }}
       >
-        <FlatList
-          data={items}
-          extraData={items}
-          keyExtractor={(item) => item.id!.toString()}
-          scrollEnabled={false}
-          renderItem={({ item }) => {
-            return <HikeCard />;
-          }}
-        />
-      </ScrollView>
-      <View
-        className="bg-dark_sec px-3 py-5 rounded-2xl "
-        style={{ height: "97%" }}
-      >
-        {/* Add Item Button */}
         <Link href={`/hikes/add_hike`} asChild>
           <TouchableOpacity
             className="bg-primary flex-row justify-center items-center rounded-full absolute right-6"
