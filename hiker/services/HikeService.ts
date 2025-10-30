@@ -96,28 +96,56 @@ export const HikeService = {
 
   /** Get all hikes */
   async getAll(): Promise<Hike[]> {
-    ensureDbReady();
+    console.log("🟦 [HikeService] getAll() called");
+
+    const start = Date.now(); // Track performance timing
     try {
-      const rows = await db!.getAllAsync<Hike>(
-        `SELECT * FROM ${TABLE_HIKES} ORDER BY ${COL_DATE} DESC`
+      console.log("🟨 Initializing database connection...");
+      await this.init();
+
+      console.log("🟨 Ensuring database is ready...");
+      await ensureDbReady();
+
+      console.log(`🟩 Fetching all hikes from table: ${TABLE_HIKES}`);
+      const query = `SELECT * FROM ${TABLE_HIKES} ORDER BY ${COL_DATE} DESC`;
+
+      const rows = await db!.getAllAsync<Hike>(query);
+      console.log(
+        `🟩 Query executed successfully. Rows fetched: ${rows.length}`
       );
-      return rows.map((r: Hike) => ({ ...r, parking: !!r.parking }));
+
+      const mapped = rows.map((r: Hike) => ({
+        ...r,
+        parking: !!r.parking,
+      }));
+
+      console.log("🟩 Hike data normalized and mapped.");
+      console.log("📦 Sample record:", mapped[0] ?? "No records found");
+
+      const end = Date.now();
+      console.log(`⏱️ [HikeService.getAll] Completed in ${end - start} ms`);
+      return mapped;
     } catch (err) {
-      console.error("HikeService.getAll() failed:", err);
+      console.error("❌ [HikeService.getAll] Failed:", err);
       return [];
     }
   },
-
   /** Add a new hike */
   async add(hike: Omit<Hike, "id">): Promise<number> {
-    ensureDbReady();
     try {
+      console.log("🟦 HikeService.add() called");
+
+      // ✅ Ensure initialization completes before continuing
+      await this.init();
+      await ensureDbReady();
+      console.log("✅ Database initialization complete");
+
       const result = await db!.runAsync(
         `INSERT INTO ${TABLE_HIKES} 
          (${COL_NAME}, ${COL_IMAGE}, ${COL_LOCATION}, ${COL_DATE}, 
           ${COL_LENGTH_VALUE}, ${COL_LENGTH_UNIT}, ${COL_DESCRIPTION}, 
           ${COL_DIFFICULTY}, ${COL_PARKING})
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         hike.name,
         hike.image ?? "",
         hike.location ?? "",
@@ -128,13 +156,17 @@ export const HikeService = {
         hike.difficulty ?? "Medium",
         hike.parking ? 1 : 0
       );
+
+      console.log(
+        "🧾 Hike inserted successfully. Row ID:",
+        result.lastInsertRowId
+      );
       return result.lastInsertRowId!;
     } catch (err) {
-      console.error("HikeService.add() failed:", err);
+      console.error("💥 HikeService.add() failed:", err);
       return -1;
     }
   },
-
   /** Update an existing hike */
   async update(hike: Hike): Promise<boolean> {
     ensureDbReady();

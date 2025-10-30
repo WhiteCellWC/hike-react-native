@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -11,51 +11,39 @@ import { Link } from "expo-router";
 import { icons } from "@/constants/icons";
 import HikeCard from "./HikeCardComponent";
 import { Hike } from "@/types/types";
+import { HikeService } from "@/services/HikeService";
 
 const HikeList: React.FC = () => {
-  const items: Hike[] = [
-    {
-      id: 1,
-      name: "Mount Misty Trail",
-      image: "https://example.com/misty.jpg",
-      location: "Yamanashi, Japan",
-      date: 1672531200000, // Jan 1, 2023
-      length_value: 8.5,
-      length_unit: "km",
-      description: "A scenic trail through misty forests and gentle slopes.",
-      difficulty: "Moderate",
-      parking: true,
-    },
-    {
-      id: 2,
-      name: "Crystal Creek Path",
-      image: "https://example.com/crystal.jpg",
-      location: "Nagano, Japan",
-      date: 1675209600000, // Feb 1, 2023
-      length_value: 5.2,
-      length_unit: "km",
-      description: "Follow the sparkling creek with plenty of photo spots.",
-      difficulty: "Easy",
-      parking: false,
-    },
-    {
-      id: 3,
-      name: "Thunder Peak Ascent",
-      image: "https://example.com/thunder.jpg",
-      location: "Gifu, Japan",
-      date: 1677628800000, // Mar 1, 2023
-      length_value: 12.3,
-      length_unit: "km",
-      description: "A challenging climb with rewarding summit views.",
-      difficulty: "Hard",
-      parking: true,
-    },
-  ];
+  const [items, setItems] = useState<Hike[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const fetchHikes = async () => {
+    try {
+      setLoading(true);
+      const hikes = await HikeService.getAll(); // should return Hike[]
+      setItems(hikes);
+    } catch (error) {
+      console.error("Failed to fetch hikes:", error);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHikes();
+  }, []);
 
   return (
     <View className="border bg-red h-[75%]">
       <View style={{ flex: 1 }} className="bg-white">
-        {items.length === 0 ? (
+        {loading ? (
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
+            <Text className="text-gray-500">Loading hikes...</Text>
+          </View>
+        ) : items.length === 0 ? (
           <View
             style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
           >
@@ -85,7 +73,7 @@ const HikeList: React.FC = () => {
         <Link href={`/hikes/add_hike`} asChild>
           <TouchableOpacity
             className="bg-primary flex-row justify-center items-center rounded-full absolute right-6"
-            style={{ bottom: -20 }}
+            style={{ bottom: -20, width: 50, height: 50 }}
           >
             <Image source={icons.plus} className="size-15 mr-1 mt-0.5" />
           </TouchableOpacity>

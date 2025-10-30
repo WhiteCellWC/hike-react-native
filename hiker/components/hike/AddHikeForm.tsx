@@ -12,23 +12,31 @@ import FloatingInput from "../common/FloatingInput";
 import DropDownPicker, { ValueType } from "react-native-dropdown-picker";
 import * as ImagePicker from "expo-image-picker";
 import Checkbox from "expo-checkbox";
-import { Link } from "expo-router";
+import { Link, router, useRouter } from "expo-router";
+import { Hike } from "@/types/types";
+import { HikeService } from "@/services/HikeService";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { Directory, File, Paths } from "expo-file-system";
 
 const AddHike: FC = () => {
   // Explicitly type the state as string
   const [name, setName] = useState<string>("");
   const [location, setLocation] = useState<string>("");
-  const [date, setDate] = useState<string>("");
+
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [date, setDate] = useState(""); // this will store formatted string
   const [lengthValue, setLengthValue] = useState("");
   const [lengthUnit, setLengthUnit] = useState("km");
   const [description, setDescription] = useState<string>("");
-  const [difficulty, setDifficulty] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<string>("");
   const [difficultyDropdownOpen, setDifficultyDropdownOpen] = useState(false);
   const [parking, setParking] = useState(false);
+  const router = useRouter();
 
   // Image Upload
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUri, setImageUri] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   // Image picker options
   const openImageOptions = () => {
@@ -103,6 +111,124 @@ const AddHike: FC = () => {
   // State for DropDownPicker visibility (internal)
   const [unitDropdownOpen, setUnitDropdownOpen] = useState(false);
 
+  const handleAddHike = async () => {
+    console.log("🟦 handleAddHike() triggered");
+
+    // ✅ Log raw inputs
+    console.log("Input values:", {
+      name,
+      location,
+      date,
+      lengthValue,
+      lengthUnit,
+      difficulty,
+      imageUri,
+      description,
+      parking,
+    });
+
+    if (
+      !name.trim() ||
+      !location.trim() ||
+      !date.trim() ||
+      !lengthValue.trim() ||
+      !lengthUnit.trim() ||
+      !difficulty.trim()
+    ) {
+      console.warn("⚠️ Missing required fields");
+      Alert.alert("Missing Fields", "Please fill in all the fields.");
+      return;
+    }
+
+    try {
+      // 🗓️ Parse date
+      console.log("📅 Parsing date:", date);
+      const [year, month, day] = date.split("-").map(Number);
+      const formattedDate = new Date(year, month - 1, day).getTime();
+      console.log("✅ Parsed formattedDate:", formattedDate);
+
+      // 📏 Parse length
+      const parsedLength = Number(lengthValue);
+      if (isNaN(parsedLength)) {
+        console.error("❌ Invalid length input:", lengthValue);
+        Alert.alert("Invalid Length", "Length must be numeric.");
+        return;
+      }
+
+      // 🖼️ Handle image file saving
+      let finalImageUri = imageUri;
+      if (imageUri) {
+        try {
+          const fileName = imageUri.split("/").pop()!;
+
+          // Create (or confirm) the app storage directory
+          const destinationDir = new Directory(Paths.document, "images");
+          await destinationDir.create({
+            intermediates: true,
+            idempotent: true,
+          });
+
+          // Create source and destination file objects
+          const sourceFile = new File(imageUri);
+          const destinationFile = new File(destinationDir, fileName);
+
+          // Copy the file into the app's storage
+          await sourceFile.copy(destinationFile);
+
+          // Save the new file path
+          finalImageUri = destinationFile.uri;
+
+          console.log("📦 Image saved at:", finalImageUri);
+        } catch (error) {
+          console.error("❌ Image upload failed:", error);
+          Alert.alert("Upload Error", "Failed to save image locally.");
+        }
+      } else {
+        console.log("⚠️ No image selected, skipping file copy");
+      }
+
+      // 🧾 Prepare data for DB
+      const hikeData: Omit<Hike, "id"> = {
+        name: name.trim(),
+        image: finalImageUri || "",
+        location: location.trim(),
+        date: formattedDate,
+        length_value: parsedLength,
+        length_unit: lengthUnit,
+        description: description.trim(),
+        difficulty,
+        parking,
+      };
+
+      console.log("🧾 Final Hike Data ready to insert:", hikeData);
+
+      // 💾 Save to database
+      await HikeService.add(hikeData);
+      console.log("✅ Hike successfully added to database/cache");
+
+      // ✅ Navigate back only after success
+      Alert.alert("Success", "Hike added successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            console.log("🔙 Navigating back");
+            router.back();
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error("💥 Add hike failed:", error);
+      Alert.alert("Error", "Failed to add hike. Please try again.");
+    }
+  };
+
+  const handleDateConfirm = (pickedDate: Date) => {
+    setSelectedDate(pickedDate);
+    const formatted = pickedDate.toISOString().split("T")[0]; // e.g. "2025-10-29"
+    setDate(formatted);
+    setDatePickerVisible(false);
+  };
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -138,13 +264,35 @@ const AddHike: FC = () => {
         </View>
 
         <View className="mb-5">
-          {/* Input 3: Date (Example using a prop from TextInputProps) */}
-          <FloatingInput
-            label="Enter Date"
-            value={date}
-            onChangeText={setDate}
-            keyboardType="numeric" // This prop is automatically available via `TextInputProps`
-            className=""
+          <TouchableOpacity
+            onPress={() => setDatePickerVisible(true)}
+            activeOpacity={0.8}
+            style={{
+              borderWidth: 1,
+              borderColor: "#d1d5db", // gray-300
+              borderRadius: 10,
+              paddingVertical: 14,
+              paddingHorizontal: 12,
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                color: date ? "#111827" : "#9ca3af", // gray text if empty
+              }}
+            >
+              {date ? date : "Select Date"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Date Picker Modal */}
+          <DateTimePickerModal
+            isVisible={isDatePickerVisible}
+            mode="date"
+            onConfirm={handleDateConfirm}
+            onCancel={() => setDatePickerVisible(false)}
+            date={selectedDate}
           />
         </View>
 
@@ -183,7 +331,6 @@ const AddHike: FC = () => {
             label="Enter Description"
             value={description}
             onChangeText={setDescription}
-            keyboardType="numeric" // This prop is automatically available via `TextInputProps`
             className=""
           />
         </View>
@@ -243,26 +390,25 @@ const AddHike: FC = () => {
           <Text className="text-gray-700 text-base">Parking Available</Text>
         </View>
         <View className=" mt-6">
+          {/* ➕ Add Button */}
+          <TouchableOpacity
+            className="flex-1 mb-5 rounded-xl bg-primary py-4"
+            activeOpacity={0.7}
+            onPress={handleAddHike}
+          >
+            <Text className="text-center text-white font-semibold text-lg">
+              Add
+            </Text>
+          </TouchableOpacity>
+
           {/* 🔙 Back Button */}
           <Link href=".." asChild>
             <TouchableOpacity
-              className="flex-1 mb-5 rounded-xl border border-gray-400 py-4"
+              className="flex-1 rounded-xl border border-gray-400 py-4"
               activeOpacity={0.7}
             >
               <Text className="text-center text-gray-700 font-semibold text-lg">
                 Back
-              </Text>
-            </TouchableOpacity>
-          </Link>
-
-          {/* ➕ Add Button */}
-          <Link href=".." asChild>
-            <TouchableOpacity
-              className="flex-1 rounded-xl bg-primary py-4"
-              activeOpacity={0.7}
-            >
-              <Text className="text-center text-white font-semibold text-lg">
-                Add
               </Text>
             </TouchableOpacity>
           </Link>
