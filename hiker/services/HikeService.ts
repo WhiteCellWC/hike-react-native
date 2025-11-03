@@ -80,8 +80,12 @@ export const HikeService = {
 
   /** Get hike by ID */
   async getById(id: number): Promise<Hike | null> {
-    ensureDbReady();
     try {
+      console.log("🟦 HikeService.getById() called, id: " + id);
+
+      // ✅ Ensure initialization completes before continuing
+      await this.init();
+      await ensureDbReady();
       const hike = await db!.getFirstAsync<Hike>(
         `SELECT * FROM ${TABLE_HIKES} WHERE ${COL_ID} = ?`,
         id

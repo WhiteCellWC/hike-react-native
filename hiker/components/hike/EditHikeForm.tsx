@@ -1,44 +1,319 @@
-import React, { useState, FC } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
-import FloatingInput from "../common/FloatingInput";
-import DropDownPicker, { ValueType } from "react-native-dropdown-picker";
-import * as ImagePicker from "expo-image-picker";
-import Checkbox from "expo-checkbox";
-import { Link, router, useRouter } from "expo-router";
-import { Hike } from "@/types/types";
 import { HikeService } from "@/services/HikeService";
+import { Hike } from "@/types/types";
+import Checkbox from "expo-checkbox";
+import { Link, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import {
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  Image,
+} from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import FloatingInput from "../common/FloatingInput";
 import { Directory, File, Paths } from "expo-file-system";
 
-const AddHike: FC = () => {
-  // Explicitly type the state as string
-  const [name, setName] = useState<string>("");
-  const [location, setLocation] = useState<string>("");
+interface EditHikeFormProps {
+  hikeId: string;
+}
 
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [date, setDate] = useState(""); // this will store formatted string
-  const [lengthValue, setLengthValue] = useState("");
-  const [lengthUnit, setLengthUnit] = useState("km");
-  const [description, setDescription] = useState<string>("");
-  const [difficulty, setDifficulty] = useState<string>("");
-  const [difficultyDropdownOpen, setDifficultyDropdownOpen] = useState(false);
-  const [parking, setParking] = useState(false);
+const EditHikeForm: React.FC<EditHikeFormProps> = ({ hikeId }) => {
   const router = useRouter();
 
-  // Image Upload
+  // Form state
+  const [name, setName] = useState("");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState("");
+  const [lengthValue, setLengthValue] = useState("");
+  const [lengthUnit, setLengthUnit] = useState("km");
+  const [difficulty, setDifficulty] = useState("Medium");
+  const [description, setDescription] = useState("");
+  const [parking, setParking] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const [imageUri, setImageUri] = useState<string>("");
-  const [uploading, setUploading] = useState(false);
-  // Image picker options
+  // Dropdown state
+  const [unitDropdownOpen, setUnitDropdownOpen] = useState(false);
+  const [difficultyDropdownOpen, setDifficultyDropdownOpen] = useState(false);
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+
+  const unitOptions = [
+    { label: "Kilometers (km)", value: "km" },
+    { label: "Miles (mi)", value: "mi" },
+    { label: "Meters (m)", value: "m" },
+  ];
+
+  const difficultyOptions = [
+    { label: "Easy", value: "easy" },
+    { label: "Normal", value: "normal" },
+    { label: "Hard", value: "hard" },
+    { label: "Extreme", value: "extreme" },
+  ];
+
+  // Fetch existing hike data if editing
+  useEffect(() => {
+    if (!hikeId) return;
+
+    const loadHike = async () => {
+      try {
+        const hike = await HikeService.getById(Number(hikeId));
+        if (!hike) {
+          Alert.alert("Error", "Hike not found");
+          return;
+        }
+
+        const parsedDate = parseTimestamp(hike.date);
+        setName(hike.name);
+        setLocation(hike.location);
+        setDate(
+          new Date(hike.date).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })
+        ); // yyyy-mm-dd
+        setLengthValue(String(hike.length_value));
+        setLengthUnit(hike.length_unit);
+        setDifficulty(hike.difficulty);
+        setDescription(hike.description);
+        setParking(hike.parking);
+        setImageUri(hike.image);
+        setSelectedDate(parsedDate);
+      } catch (err) {
+        console.error("Failed to load hike:", err);
+        Alert.alert("Error", "Could not load hike data");
+      }
+    };
+
+    loadHike();
+  }, [hikeId]);
+
+  const handleSave = async () => {
+    console.log("🟦 handleSave() triggered");
+
+    // ✅ Log current state values
+    console.log("Input values:", {
+      hikeId,
+      name,
+      location,
+      date,
+      lengthValue,
+      lengthUnit,
+      difficulty,
+      imageUri,
+      description,
+      parking,
+    });
+
+    // ⚠️ Validation
+    if (
+      !name.trim() ||
+      !location.trim() ||
+      !date.trim() ||
+      !lengthValue.trim() ||
+      !lengthUnit.trim() ||
+      !difficulty.trim()
+    ) {
+      console.warn("⚠️ Missing required fields");
+      Alert.alert("Missing Fields", "Please fill in all required fields.");
+      return;
+    }
+
+    try {
+      // 🗓️ Parse date
+      console.log("📅 Parsing date:", date);
+
+      const parseReadableDate = (input: string): Date | null => {
+        // Match patterns like "Nov 3, 2025"
+        const match = input.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+        if (!match) return null;
+
+        const [, monthStr, dayStr, yearStr] = match;
+        const months = {
+          Jan: 0,
+          Feb: 1,
+          Mar: 2,
+          Apr: 3,
+          May: 4,
+          Jun: 5,
+          Jul: 6,
+          Aug: 7,
+          Sep: 8,
+          Oct: 9,
+          Nov: 10,
+          Dec: 11,
+        };
+
+        const month = months[monthStr.substring(0, 3) as keyof typeof months];
+        const day = Number(dayStr);
+        const year = Number(yearStr);
+
+        if (month === undefined || isNaN(day) || isNaN(year)) return null;
+        return new Date(year, month, day);
+      };
+
+      const parsedDate = parseReadableDate(date);
+
+      if (!parsedDate || isNaN(parsedDate.getTime())) {
+        console.error("❌ Invalid date string:", date);
+        Alert.alert("Invalid Date", `Could not parse date: ${date}`);
+        return;
+      }
+
+      const formattedDate = parsedDate.getTime();
+      console.log(
+        "✅ Parsed formattedDate:",
+        formattedDate,
+        "| ISO:",
+        parsedDate.toISOString()
+      );
+
+      // 📏 Parse length
+      const parsedLength = Number(lengthValue);
+      if (isNaN(parsedLength)) {
+        console.error("❌ Invalid length input:", lengthValue);
+        Alert.alert("Invalid Length", "Length must be numeric.");
+        return;
+      }
+
+      // 🖼️ Handle image update
+      let finalImageUri = imageUri;
+      const existingHike = await HikeService.getById(Number(hikeId));
+
+      if (!existingHike) {
+        Alert.alert("Error", "Hike not found.");
+        console.error("❌ Hike not found with ID:", hikeId);
+        return;
+      }
+
+      // If new image differs from existing one, replace it
+      if (imageUri && imageUri !== existingHike.image) {
+        try {
+          // 🧹 Remove old image file
+          if (existingHike.image) {
+            const oldFile = new File(existingHike.image);
+            const exists = await oldFile.exists;
+            if (exists) {
+              await oldFile.delete();
+              console.log("🗑️ Old image removed:", existingHike.image);
+            } else {
+              console.log("⚠️ Old image not found, skipping delete");
+            }
+          }
+
+          // 💾 Save new image into local directory
+          const fileName = imageUri.split("/").pop()!;
+          const destinationDir = new Directory(Paths.document, "images");
+
+          await destinationDir.create({
+            intermediates: true,
+            idempotent: true,
+          });
+
+          const sourceFile = new File(imageUri);
+          const destinationFile = new File(destinationDir, fileName);
+
+          await sourceFile.copy(destinationFile);
+          finalImageUri = destinationFile.uri;
+
+          console.log("📦 New image saved at:", finalImageUri);
+        } catch (error) {
+          console.error("❌ Image replacement failed:", error);
+          Alert.alert("Image Error", "Failed to replace image file.");
+        }
+      } else {
+        console.log("🟡 Image unchanged, skipping replacement");
+      }
+
+      // 🧾 Prepare data for update
+      const updatedHike: Hike = {
+        id: Number(hikeId),
+        name: name.trim(),
+        image: finalImageUri || "",
+        location: location.trim(),
+        date: formattedDate,
+        length_value: parsedLength,
+        length_unit: lengthUnit,
+        description: description.trim(),
+        difficulty,
+        parking,
+      };
+
+      console.log("  ├─ formattedDate:", formattedDate);
+      // 🪵 Detailed field log
+      console.log("🧾 Final Hike Data ready to update:");
+      console.log("  ├─ id:", updatedHike.id);
+      console.log("  ├─ name:", updatedHike.name);
+      console.log("  ├─ location:", updatedHike.location);
+      console.log(
+        "  ├─ date (timestamp):",
+        updatedHike.date,
+        "|",
+        new Date(updatedHike.date).toISOString()
+      );
+      console.log("  ├─ length_value:", updatedHike.length_value);
+      console.log("  ├─ length_unit:", updatedHike.length_unit);
+      console.log("  ├─ difficulty:", updatedHike.difficulty);
+      console.log("  ├─ description:", updatedHike.description);
+      console.log("  ├─ parking:", updatedHike.parking);
+      console.log("  └─ image:", updatedHike.image);
+
+      console.log("🧾 Final Hike Data ready to update:", updatedHike);
+
+      // 💾 Update database record
+      const success = await HikeService.update(updatedHike);
+
+      if (success) {
+        console.log("✅ Hike successfully updated");
+        Alert.alert("Success", "Hike updated successfully!", [
+          {
+            text: "OK",
+            onPress: () => {
+              console.log("🔙 Navigating back");
+              router.back();
+            },
+          },
+        ]);
+      } else {
+        console.error("❌ Hike update failed in database layer");
+        Alert.alert("Error", "Failed to update hike in the database.");
+      }
+    } catch (error) {
+      console.error("💥 handleSave() failed:", error);
+      Alert.alert("Error", "An unexpected error occurred while saving.");
+    }
+  };
+
+  const handleDateConfirm = (pickedDate: Date) => {
+    setSelectedDate(pickedDate);
+    const formattedDate = pickedDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    setDate(formattedDate);
+    setDatePickerVisible(false);
+  };
+
+  const parseTimestamp = (timestamp: number | string): Date => {
+    const value =
+      typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
+    const date = new Date(value);
+    console.log(
+      "parseTimestamp(): raw =",
+      timestamp,
+      "| parsed =",
+      date.toISOString()
+    );
+    return date;
+  };
+
   const openImageOptions = () => {
     Alert.alert(
       "Select Image",
@@ -92,143 +367,6 @@ const AddHike: FC = () => {
     }
   };
 
-  // --- STATE DEFINITIONS ---
-  const initialUnit = "km";
-
-  const unitOptions = [
-    { label: "Kilometers (km)", value: "km" },
-    { label: "Miles (mi)", value: "mi" },
-    { label: "Meters (m)", value: "m" },
-  ];
-
-  const difficultyOptions = [
-    { label: "Easy", value: "easy" },
-    { label: "Normal", value: "normal" },
-    { label: "Hard", value: "hard" },
-    { label: "Extreme", value: "extreme" },
-  ];
-
-  // State for DropDownPicker visibility (internal)
-  const [unitDropdownOpen, setUnitDropdownOpen] = useState(false);
-
-  const handleAddHike = async () => {
-    console.log("🟦 handleAddHike() triggered");
-
-    // ✅ Log raw inputs
-    console.log("Input values:", {
-      name,
-      location,
-      date,
-      lengthValue,
-      lengthUnit,
-      difficulty,
-      imageUri,
-      description,
-      parking,
-    });
-
-    if (
-      !name.trim() ||
-      !location.trim() ||
-      !date.trim() ||
-      !lengthValue.trim() ||
-      !lengthUnit.trim() ||
-      !difficulty.trim()
-    ) {
-      console.warn("⚠️ Missing required fields");
-      Alert.alert("Missing Fields", "Please fill in all the fields.");
-      return;
-    }
-
-    try {
-      // 🗓️ Parse date
-      console.log("📅 Parsing date:", date);
-      const [year, month, day] = date.split("-").map(Number);
-      const formattedDate = new Date(year, month - 1, day).getTime();
-      console.log("✅ Parsed formattedDate:", formattedDate);
-
-      // 📏 Parse length
-      const parsedLength = Number(lengthValue);
-      if (isNaN(parsedLength)) {
-        console.error("❌ Invalid length input:", lengthValue);
-        Alert.alert("Invalid Length", "Length must be numeric.");
-        return;
-      }
-
-      // 🖼️ Handle image file saving
-      let finalImageUri = imageUri;
-      if (imageUri) {
-        try {
-          const fileName = imageUri.split("/").pop()!;
-
-          // Create (or confirm) the app storage directory
-          const destinationDir = new Directory(Paths.document, "images");
-          await destinationDir.create({
-            intermediates: true,
-            idempotent: true,
-          });
-
-          // Create source and destination file objects
-          const sourceFile = new File(imageUri);
-          const destinationFile = new File(destinationDir, fileName);
-
-          // Copy the file into the app's storage
-          await sourceFile.copy(destinationFile);
-
-          // Save the new file path
-          finalImageUri = destinationFile.uri;
-
-          console.log("📦 Image saved at:", finalImageUri);
-        } catch (error) {
-          console.error("❌ Image upload failed:", error);
-          Alert.alert("Upload Error", "Failed to save image locally.");
-        }
-      } else {
-        console.log("⚠️ No image selected, skipping file copy");
-      }
-
-      // 🧾 Prepare data for DB
-      const hikeData: Omit<Hike, "id"> = {
-        name: name.trim(),
-        image: finalImageUri || "",
-        location: location.trim(),
-        date: formattedDate,
-        length_value: parsedLength,
-        length_unit: lengthUnit,
-        description: description.trim(),
-        difficulty,
-        parking,
-      };
-
-      console.log("🧾 Final Hike Data ready to insert:", hikeData);
-
-      // 💾 Save to database
-      await HikeService.add(hikeData);
-      console.log("✅ Hike successfully added to database/cache");
-
-      // ✅ Navigate back only after success
-      Alert.alert("Success", "Hike added successfully!", [
-        {
-          text: "OK",
-          onPress: () => {
-            console.log("🔙 Navigating back");
-            router.back();
-          },
-        },
-      ]);
-    } catch (error) {
-      console.error("💥 Add hike failed:", error);
-      Alert.alert("Error", "Failed to add hike. Please try again.");
-    }
-  };
-
-  const handleDateConfirm = (pickedDate: Date) => {
-    setSelectedDate(pickedDate);
-    const formatted = pickedDate.toISOString().split("T")[0]; // e.g. "2025-10-29"
-    setDate(formatted);
-    setDatePickerVisible(false);
-  };
-
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -240,11 +378,10 @@ const AddHike: FC = () => {
     >
       <View className="py-16 mt-6 px-6 ">
         <Text className="font-bold mb-10" style={{ fontSize: 30 }}>
-          Add Hike
+          Edit Hike
         </Text>
 
         <View className="mb-5">
-          {/* Input 1: Name */}
           <FloatingInput
             label="Enter Name" // Type-checked: must be a string
             value={name} // Type-checked: must be a string
@@ -252,7 +389,6 @@ const AddHike: FC = () => {
             className=""
           />
         </View>
-
         <View className="mb-5">
           {/* Input 2: Location */}
           <FloatingInput
@@ -262,7 +398,6 @@ const AddHike: FC = () => {
             className=""
           />
         </View>
-
         <View className="mb-5">
           <TouchableOpacity
             onPress={() => setDatePickerVisible(true)}
@@ -295,7 +430,6 @@ const AddHike: FC = () => {
             date={selectedDate}
           />
         </View>
-
         <View className="flex-row mb-5" style={styles.lengthInputRow}>
           {/* LENGTH VALUE INPUT (65% width) */}
           <View style={styles.lengthValueContainer}>
@@ -334,6 +468,7 @@ const AddHike: FC = () => {
             className=""
           />
         </View>
+
         <View className="mb-5" style={{ zIndex: 1500 }}>
           <DropDownPicker
             zIndex={1500}
@@ -348,6 +483,16 @@ const AddHike: FC = () => {
             style={styles.dropdownStyle}
             dropDownContainerStyle={styles.dropdownContainerStyle}
           />
+        </View>
+
+        <View className="flex-row items-center mb-8 ms-2">
+          <Checkbox
+            style={{ marginRight: 10 }}
+            value={parking}
+            onValueChange={setParking}
+            color={parking ? "#3b82f6" : undefined}
+          />
+          <Text className="text-gray-700 text-base">Parking Available</Text>
         </View>
 
         {/* 🏞️ Image Picker Section */}
@@ -379,25 +524,16 @@ const AddHike: FC = () => {
             )}
           </TouchableOpacity>
         </View>
-        {/* 🚗 Parking Checkbox */}
-        <View className="flex-row items-center mb-8 ms-2">
-          <Checkbox
-            style={{ marginRight: 10 }}
-            value={parking}
-            onValueChange={setParking}
-            color={parking ? "#3b82f6" : undefined}
-          />
-          <Text className="text-gray-700 text-base">Parking Available</Text>
-        </View>
+
         <View className=" mt-6">
           {/* ➕ Add Button */}
           <TouchableOpacity
             className="flex-1 mb-5 rounded-xl bg-primary py-4"
             activeOpacity={0.7}
-            onPress={handleAddHike}
+            onPress={handleSave}
           >
             <Text className="text-center text-white font-semibold text-lg">
-              Add
+              Update
             </Text>
           </TouchableOpacity>
 
@@ -413,7 +549,6 @@ const AddHike: FC = () => {
             </TouchableOpacity>
           </Link>
         </View>
-        <View style={{ height: 20 }} />
       </View>
     </ScrollView>
   );
@@ -454,5 +589,4 @@ const styles = StyleSheet.create({
     zIndex: 2000,
   },
 });
-
-export default AddHike;
+export default EditHikeForm;

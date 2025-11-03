@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -7,12 +7,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, useFocusEffect } from "expo-router";
 import { icons } from "@/constants/icons";
 import HikeCard from "./HikeCardComponent";
 import { Hike } from "@/types/types";
 import { HikeService } from "@/services/HikeService";
-
 const HikeList: React.FC = () => {
   const [items, setItems] = useState<Hike[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -20,7 +19,7 @@ const HikeList: React.FC = () => {
   const fetchHikes = async () => {
     try {
       setLoading(true);
-      const hikes = await HikeService.getAll(); // should return Hike[]
+      const hikes = await HikeService.getAll();
       setItems(hikes);
     } catch (error) {
       console.error("Failed to fetch hikes:", error);
@@ -34,19 +33,26 @@ const HikeList: React.FC = () => {
     fetchHikes();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchHikes();
+    }, [])
+  );
+
+  // 🧹 Handle hike deletion (refresh UI instantly)
+  const handleDelete = (id: number) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
   return (
-    <View className="border bg-red h-[75%]">
+    <View className="h-[75%]">
       <View style={{ flex: 1 }} className="bg-white">
         {loading ? (
-          <View
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-          >
+          <View className="flex-1 justify-center items-center">
             <Text className="text-gray-500">Loading hikes...</Text>
           </View>
         ) : items.length === 0 ? (
-          <View
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-          >
+          <View className="flex-1 justify-center items-center">
             <Text className="text-gray-500">No hike data available.</Text>
           </View>
         ) : (
@@ -54,11 +60,14 @@ const HikeList: React.FC = () => {
             data={items}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{ paddingBottom: 100 }}
-            renderItem={({ item }) => <HikeCard hike={item} />}
+            renderItem={({ item }) => (
+              <HikeCard hike={item} onDelete={handleDelete} /> // 👈 Pass callback
+            )}
           />
         )}
       </View>
 
+      {/* Floating Add Button */}
       <View
         className="bg-dark_sec px-3 py-5 rounded-2xl"
         style={{

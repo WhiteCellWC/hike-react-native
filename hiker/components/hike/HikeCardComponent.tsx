@@ -1,14 +1,55 @@
 import { icons } from "@/constants/icons";
+import { HikeService } from "@/services/HikeService";
 import { Hike } from "@/types/types";
 import { File, Paths } from "expo-file-system";
-import { Directory } from "expo-file-system/build/ExpoFileSystem.types";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Image, Text, View } from "react-native";
+import { Alert, Image, Text, TouchableOpacity, View } from "react-native";
 type HikeCardProps = {
   hike: Hike;
+  onDelete?: (id: number) => void; // 👈 Add this
 };
-const HikeCard: React.FC<HikeCardProps> = ({ hike }) => {
+
+const HikeCard: React.FC<HikeCardProps> = ({ hike, onDelete }) => {
   const [imageUri, setImageUri] = useState<string | null>(null);
+
+  const router = useRouter();
+
+  const handleOptions = () => {
+    Alert.alert("Options", "Choose an action", [
+      {
+        text: "Edit",
+        onPress: () => {
+          // Navigate to add_hike page with hike id
+          console.log("Edit hike", hike.id);
+          router.push({
+            pathname: "/hikes/[id]",
+            params: { id: hike.id.toString() },
+          });
+        },
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await HikeService.delete(hike.id);
+            console.log("✅ Deleted hike", hike.id);
+
+            // 🔔 Notify parent list
+            onDelete?.(hike.id);
+
+            // 🔔 Show success message
+            Alert.alert("Deleted", "Hike deleted successfully!");
+          } catch (err) {
+            console.error("❌ Failed to delete hike:", err);
+            Alert.alert("Error", "Failed to delete hike.");
+          }
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
 
   useEffect(() => {
     const loadImage = async () => {
@@ -83,10 +124,9 @@ const HikeCard: React.FC<HikeCardProps> = ({ hike }) => {
             </View>
           </View>
         </View>
-
-        <View className="mt-2">
+        <TouchableOpacity onPress={() => handleOptions()}>
           <Image source={icons.ellipsis} />
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
