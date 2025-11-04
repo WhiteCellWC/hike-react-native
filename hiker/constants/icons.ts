@@ -13,6 +13,7 @@ import location from "@/assets/icons/location_dot.png";
 import road from "@/assets/icons/road.png";
 import calendar2 from "@/assets/icons/calendar2.png";
 import ellipsis from "@/assets/icons/ellipsis_vertical.png";
+import search from "@/assets/icons/search.png";
 
 export const icons = {
   calendar,
@@ -30,4 +31,5 @@ export const icons = {
   road,
   calendar2,
   ellipsis,
+  search,
 } as const;

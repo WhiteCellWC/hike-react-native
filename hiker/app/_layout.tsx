@@ -37,6 +37,10 @@ export default function RootLayout() {
         <Stack.Screen options={{ headerShown: false }} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="hikes/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="hikes/details/[id]"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="hikes/add_hike" options={{ headerShown: false }} />
       </Stack>
     </>

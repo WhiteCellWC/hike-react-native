@@ -97,7 +97,117 @@ export const HikeService = {
       return null;
     }
   },
+  async getFiltered(filters: {
+    search?: string;
+    minLength?: string;
+    maxLength?: string;
+    date?: number;
+    unit?: string;
+  }): Promise<Hike[]> {
+    console.log("🟦 [HikeService] getFiltered() called");
+    console.log(
+      "📩 [HikeService] Received raw filters:",
+      JSON.stringify(filters, null, 2)
+    );
 
+    const start = Date.now();
+    await this.init();
+    await ensureDbReady();
+
+    // --- Normalize and log filter inputs
+    const normalized = {
+      search: filters.search?.trim() || "",
+      minLength: filters.minLength?.trim() || "",
+      maxLength: filters.maxLength?.trim() || "",
+      date:
+        typeof filters.date === "number" && !isNaN(filters.date)
+          ? filters.date
+          : undefined,
+      unit: filters.unit?.trim() || "",
+    };
+
+    console.log("🔍 [HikeService] Normalized Filters:", normalized);
+
+    // --- Base query setup
+    let query = `SELECT * FROM ${TABLE_HIKES}`;
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    // --- Search by name or location
+    if (normalized.search.length > 0) {
+      const term = `%${normalized.search.toLowerCase()}%`;
+      conditions.push(`(LOWER(name) LIKE ? OR LOWER(location) LIKE ?)`);
+      params.push(term, term);
+      console.log("🔸 Added search filter:", term);
+    }
+
+    // --- Length range
+    const min = Number(normalized.minLength);
+    const max = Number(normalized.maxLength);
+
+    if (!isNaN(min) && normalized.minLength !== "") {
+      conditions.push(`length_value >= ?`);
+      params.push(min);
+      console.log("🔸 Added minLength filter:", min);
+    }
+
+    if (!isNaN(max) && normalized.maxLength !== "") {
+      conditions.push(`length_value <= ?`);
+      params.push(max);
+      console.log("🔸 Added maxLength filter:", max);
+    }
+    if (typeof normalized.date === "number") {
+      // Compute start and end of selected day (local timezone)
+      const startOfDay = new Date(normalized.date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(normalized.date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      conditions.push(`date BETWEEN ? AND ?`);
+      params.push(startOfDay.getTime(), endOfDay.getTime());
+
+      console.log("🔸 Added date filter (day range):", {
+        start: startOfDay.getTime(),
+        end: endOfDay.getTime(),
+      });
+    }
+
+    // --- Unit filter (optional, only if truly relevant)
+    if (normalized.unit && normalized.unit !== "") {
+      conditions.push(`length_unit = ?`);
+      params.push(normalized.unit);
+      console.log("🔸 Added unit filter:", normalized.unit);
+    }
+
+    // --- Combine all conditions
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(" AND ");
+    } else {
+      console.log("⚪ No valid filters applied — returning all hikes.");
+    }
+
+    // --- Always order by date descending
+    query += ` ORDER BY ${COL_DATE} DESC`;
+
+    console.log("🟨 Final Query:", query);
+    console.log("🟨 Query Parameters:", params);
+
+    try {
+      const rows = await db!.getAllAsync<Hike>(query, params);
+
+      const mapped = rows.map((r: Hike) => ({
+        ...r,
+        parking: !!r.parking,
+      }));
+
+      console.log(`🟩 Returned ${mapped.length} hikes after filtering.`);
+      console.log(`⏱️ [HikeService.getFiltered] ${Date.now() - start} ms`);
+      return mapped;
+    } catch (error) {
+      console.error("❌ [HikeService.getFiltered] Query failed:", error);
+      return [];
+    }
+  },
   /** Get all hikes */
   async getAll(): Promise<Hike[]> {
     console.log("🟦 [HikeService] getAll() called");

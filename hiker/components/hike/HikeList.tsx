@@ -12,26 +12,59 @@ import { icons } from "@/constants/icons";
 import HikeCard from "./HikeCardComponent";
 import { Hike } from "@/types/types";
 import { HikeService } from "@/services/HikeService";
-const HikeList: React.FC = () => {
+
+interface HikeListProps {
+  filters: {
+    search: string;
+    minLength: string;
+    maxLength: string;
+    date: string;
+    unit: string;
+  };
+}
+
+const HikeList: React.FC<HikeListProps> = ({ filters }) => {
   const [items, setItems] = useState<Hike[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   const fetchHikes = async () => {
     try {
       setLoading(true);
-      const hikes = await HikeService.getAll();
+
+      // --- Normalize and type-safe filter values ---
+      const parsedFilters = {
+        search: filters.search?.trim() || "",
+        minLength:
+          filters.minLength && !isNaN(Number(filters.minLength))
+            ? String(filters.minLength)
+            : "0", // default to "0"
+        maxLength:
+          filters.maxLength && !isNaN(Number(filters.maxLength))
+            ? String(filters.maxLength)
+            : "", // empty means no upper bound
+        date:
+          filters.date && !isNaN(Date.parse(filters.date))
+            ? new Date(filters.date).getTime()
+            : undefined,
+        unit: filters.unit || "",
+      };
+
+      console.log("🟦 [UI] Passing parsed filters to service:", parsedFilters);
+
+      const hikes = await HikeService.getFiltered(parsedFilters);
       setItems(hikes);
     } catch (error) {
-      console.error("Failed to fetch hikes:", error);
+      console.error("❌ Failed to fetch hikes:", error);
       setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // ⬇️ Re-fetch when filters change
   useEffect(() => {
     fetchHikes();
-  }, []);
+  }, [filters]);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,8 +93,10 @@ const HikeList: React.FC = () => {
             data={items}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{ paddingBottom: 100 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
-              <HikeCard hike={item} onDelete={handleDelete} /> // 👈 Pass callback
+              <HikeCard hike={item} onDelete={handleDelete} />
             )}
           />
         )}

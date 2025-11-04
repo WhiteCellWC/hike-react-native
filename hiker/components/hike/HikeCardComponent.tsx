@@ -84,20 +84,31 @@ const HikeCard: React.FC<HikeCardProps> = ({ hike, onDelete }) => {
 
   return (
     <View className="p-4">
-      <View
-        style={{ height: 200 }}
-        className="bg-gray-300 rounded-md justify-center items-center"
+      {/* 🖼️ Make image clickable */}
+      <TouchableOpacity
+        onPress={() =>
+          router.push({
+            pathname: "/hikes/details/[id]",
+            params: { id: hike.id.toString() },
+          })
+        }
+        activeOpacity={0.8}
       >
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={{ width: "100%", height: 200, borderRadius: 8 }}
-            resizeMode="cover"
-          />
-        ) : (
-          <Text className="text-gray-500">No Image</Text>
-        )}
-      </View>
+        <View
+          style={{ height: 200 }}
+          className="bg-gray-300 rounded-md justify-center items-center"
+        >
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={{ width: "100%", height: 200, borderRadius: 8 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text className="text-gray-500">No Image</Text>
+          )}
+        </View>
+      </TouchableOpacity>
 
       <View className="flex-row justify-between content-center mt-2">
         <View>
