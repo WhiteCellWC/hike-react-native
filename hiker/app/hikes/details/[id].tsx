@@ -1,5 +1,12 @@
-import { View, Text, Image, ScrollView, ActivityIndicator } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { HikeService } from "@/services/HikeService";
 import { icons } from "@/constants/icons";
@@ -86,7 +93,7 @@ const HikeDetailsScreen = () => {
 
         {/* 🧭 Difficulty */}
         <View className="flex-row items-center mb-2">
-          <Image source={icons.mountain ?? icons.road} className="w-4 h-4" />
+          <Image source={icons.road} className="w-4 h-4" />
           <Text className="ml-2 text-gray-600 text-base">
             Difficulty:{" "}
             <Text className="font-semibold text-black">{hike.difficulty}</Text>
@@ -95,7 +102,7 @@ const HikeDetailsScreen = () => {
 
         {/* 🅿️ Parking */}
         <View className="flex-row items-center mb-2">
-          <Image source={icons.parking ?? icons.location} className="w-4 h-4" />
+          <Image source={icons.location} className="w-4 h-4" />
           <Text className="ml-2 text-gray-600 text-base">
             Parking Available:{" "}
             <Text className="font-semibold text-black">
@@ -112,6 +119,15 @@ const HikeDetailsScreen = () => {
           <Text className="text-gray-700 text-base leading-6">
             {hike.description || "No description provided."}
           </Text>
+        </View>
+        {/* 🔙 Back Button */}
+        <View className="mt-8 mb-10 items-center">
+          <TouchableOpacity
+            className="bg-gray-200 px-8 py-3 rounded-xl"
+            onPress={() => router.back()}
+          >
+            <Text className="text-black font-semibold text-base">Back</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
